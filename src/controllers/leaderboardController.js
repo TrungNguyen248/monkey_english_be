@@ -1,10 +1,9 @@
+const UserRepository = require("../repositories/userRepository");
 const LeaderboardService = require("../services/leaderboardService");
 
 class LeaderboardController {
   static async getLeaderboard(req, res) {
     try {
-      // Rút trích userId nếu có truyền token (Giúp API này vừa có thể Public, vừa Private)
-      // Nếu dùng middleware tùy chọn (optional auth), req.user có thể undefined
       const currentUserId = req.user ? req.user.userId : null;
 
       // Lấy tham số limit từ query string (VD: ?limit=20), mặc định là 10
@@ -22,6 +21,19 @@ class LeaderboardController {
       });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
+    }
+  }
+  static async getMyRank(req, res) {
+    try {
+      const userId = req.user.userId;
+      const rank = await UserRepository.getUserRank(userId);
+
+      res.status(200).json({
+        success: true,
+        data: { rank: rank || "Chưa có hạng" },
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Lỗi hệ thống" });
     }
   }
 }

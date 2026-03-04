@@ -11,5 +11,7 @@ router.use("/api/quizzes", require("./quiz"));
 router.use("/api/qa", require("./qa"));
 router.use("/api/progress", require("./progress"));
 router.use("/api/leaderboard", require("./leaderboard"));
+router.use("/api/users", require("./user"));
+router.use("/api/admin", require("./admin"));
 
 module.exports = router;

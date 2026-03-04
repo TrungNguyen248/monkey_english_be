@@ -144,6 +144,7 @@ class QuizService {
       result_record: resultRecord,
       new_user_stats: updatedUserStats,
       course_progress: updatedCourseProgress,
+      correct_answers: correctAnswers,
     };
   }
 }

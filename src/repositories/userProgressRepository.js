@@ -35,12 +35,24 @@ class UserProgressRepository {
 
   static async getUserEnrolledCourses(userId) {
     const query = `
-            SELECT c.id, c.title, c.description, ucp.progress_percentage, ucp.earned_points, ucp.last_accessed
-            FROM user_course_progress ucp
-            JOIN courses c ON ucp.course_id = c.id
-            WHERE ucp.user_id = $1
-            ORDER BY ucp.last_accessed DESC
-        `;
+        SELECT 
+            c.*, 
+            COALESCE(
+                ROUND(
+                    (
+                        SELECT COUNT(*) FROM user_lesson_progress ulp 
+                        JOIN lessons l_inner ON ulp.lesson_id = l_inner.id 
+                        WHERE ulp.user_id = $1 AND l_inner.course_id = c.id
+                    ) * 100.0 
+                    / 
+                    NULLIF((SELECT COUNT(*) FROM lessons WHERE course_id = c.id), 0)
+                ), 0
+            ) as progress_percentage
+        FROM courses c
+        JOIN user_course_progress ucp ON c.id = ucp.course_id
+        WHERE ucp.user_id = $1
+        ORDER BY ucp.updated_at DESC
+    `;
     const { rows } = await db.query(query, [userId]);
     return rows;
   }
@@ -60,14 +72,18 @@ class UserProgressRepository {
     return rows;
   }
 
-  // Đánh dấu 1 Bài học là đã hoàn thành (Dùng ON CONFLICT của PostgreSQL)
+  static async checkLessonCompleted(userId, lessonId) {
+    const query = `SELECT id FROM user_lesson_progress WHERE user_id = $1 AND lesson_id = $2`;
+    const { rows } = await db.query(query, [userId, lessonId]);
+    return rows.length > 0;
+  }
+
+  // Ghi nhận hoàn thành bài học mới
   static async markLessonCompleted(userId, lessonId) {
     const query = `
-            INSERT INTO user_lesson_progress (user_id, lesson_id, status, completed_at)
-            VALUES ($1, $2, 'completed', NOW())
-            ON CONFLICT (user_id, lesson_id) 
-            DO UPDATE SET status = 'completed', completed_at = NOW()
-            RETURNING *
+            INSERT INTO user_lesson_progress (user_id, lesson_id) 
+            VALUES ($1, $2) 
+            RETURNING id
         `;
     const { rows } = await db.query(query, [userId, lessonId]);
     return rows[0];

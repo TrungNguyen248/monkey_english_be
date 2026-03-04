@@ -4,10 +4,10 @@ const CourseRepository = require("../repositories/courseRepository"); // Import 
 class LessonService {
   // Tạo bài học mới
   static async createLesson(data) {
-    const { course_id, title, order_index, points_reward } = data;
+    const { course_id, title, points_reward } = data;
 
-    if (!course_id || !title || order_index === undefined) {
-      throw new Error("Vui lòng cung cấp đủ course_id, title và order_index!");
+    if (!course_id || !title === undefined) {
+      throw new Error("Vui lòng cung cấp đủ course_id, title!");
     }
 
     // Kiểm tra xem Khóa học có tồn tại không
@@ -18,12 +18,7 @@ class LessonService {
 
     const points = points_reward || 0; // Mặc định là 0 điểm nếu không nhập
 
-    return await LessonRepository.createLesson(
-      course_id,
-      title,
-      order_index,
-      points,
-    );
+    return await LessonRepository.createLesson(course_id, title, points);
   }
 
   // Lấy danh sách bài học theo courseId
@@ -41,7 +36,7 @@ class LessonService {
 
   // Cập nhật bài học
   static async updateLesson(id, data) {
-    const { title, order_index, points_reward } = data;
+    const { title, points_reward } = data;
 
     const existingLesson = await LessonRepository.getLessonById(id);
     if (!existingLesson) throw new Error("Không tìm thấy bài học để cập nhật!");
@@ -49,7 +44,6 @@ class LessonService {
     return await LessonRepository.updateLesson(
       id,
       title || existingLesson.title,
-      order_index !== undefined ? order_index : existingLesson.order_index,
       points_reward !== undefined
         ? points_reward
         : existingLesson.points_reward,

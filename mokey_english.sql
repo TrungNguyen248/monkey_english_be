@@ -34,6 +34,7 @@ CREATE TABLE courses (
     title VARCHAR(255) NOT NULL,
     description TEXT,
     status course_status DEFAULT 'draft',
+    tags TEXT[] DEFAULT '{}',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -110,6 +111,7 @@ CREATE TABLE user_course_progress (
     earned_points INT DEFAULT 0,
     enroll_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (user_id, course_id)
 );
 COMMENT ON COLUMN user_course_progress.progress_percentage IS '% hoàn thành khóa học';

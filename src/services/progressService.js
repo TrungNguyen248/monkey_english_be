@@ -1,6 +1,8 @@
 const ProgressRepository = require("../repositories/userProgressRepository");
 const LessonRepository = require("../repositories/lessonRepository");
 const CourseRepository = require("../repositories/courseRepository");
+const UserRepository = require("../repositories/userRepository");
+const { calculateLevel } = require("../utils/levelHelper");
 
 class ProgressService {
   static async enrollCourse(userId, courseId) {
@@ -35,55 +37,43 @@ class ProgressService {
   }
 
   static async markLessonAsCompleted(userId, lessonId) {
-    // 1. Kiểm tra lesson có tồn tại không và thuộc course nào
-    const lesson = await LessonRepository.getLessonById(lessonId);
-    if (!lesson) throw new Error("Bài học không tồn tại!");
-
-    const courseId = lesson.course_id;
-
-    // 2. Đánh dấu lesson này là completed
-    await ProgressRepository.markLessonCompleted(userId, lessonId);
-
-    // 3. TÍNH TOÁN LẠI PHẦN TRĂM HOÀN THÀNH (PROGRESS PERCENTAGE)
-    // Lấy tất cả bài học của khóa này
-    const allLessons = await LessonRepository.getLessonsByCourseId(courseId);
-    const totalLessons = allLessons.length;
-
-    // Lấy trạng thái học tập của user cho khóa này
-    const userLessons = await ProgressRepository.getLessonProgressByCourse(
+    const isCompleted = await ProgressRepository.checkLessonCompleted(
       userId,
-      courseId,
+      lessonId,
     );
 
-    // Đếm số bài đã học xong
-    const completedLessons = userLessons.filter(
-      (l) => l.status === "completed",
-    ).length;
-
-    // Tính %
-    let percentage = 0;
-    if (totalLessons > 0) {
-      percentage = (completedLessons / totalLessons) * 100;
+    // Nếu đã làm rồi thì không cộng điểm nữa
+    if (isCompleted) {
+      return {
+        pointsEarned: 0,
+        newStats: null,
+      };
     }
 
-    // Làm tròn 2 chữ số thập phân
-    percentage = Math.round(percentage * 100) / 100;
+    // 2. Đánh dấu hoàn thành bài học
+    await ProgressRepository.markLessonCompleted(userId, lessonId);
 
-    // 4. Cập nhật vào bảng user_course_progress
-    const updatedCourse =
-      await ProgressRepository.updateCourseProgressPercentage(
+    // 3. Lấy điểm thưởng của bài học
+    const pointsEarned = await LessonRepository.getLessonPoints(lessonId);
+    let newStats = null;
+
+    // 4. Xử lý cộng điểm và tính cấp độ mới (Nếu bài học có điểm thưởng)
+    if (pointsEarned > 0) {
+      const currentPoints = await UserRepository.getUserPoints(userId);
+      const newTotalPoints = currentPoints + pointsEarned;
+      const newLevel = calculateLevel(newTotalPoints);
+
+      // Cập nhật điểm và cấp độ vào Database
+      newStats = await UserRepository.addPointsAndLevel(
         userId,
-        courseId,
-        percentage,
+        pointsEarned,
+        newLevel,
       );
+    }
 
     return {
-      lesson_id: lessonId,
-      status: "completed",
-      course_id: courseId,
-      new_progress_percentage: updatedCourse
-        ? updatedCourse.progress_percentage
-        : 0,
+      pointsEarned,
+      newStats,
     };
   }
 }

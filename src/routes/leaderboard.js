@@ -6,5 +6,5 @@ const { authenticate } = require("../middlewares/auth");
 // [GET] /api/leaderboard?limit=10
 // Yêu cầu đăng nhập để biết luôn hạng của mình
 router.get("/", authenticate, LeaderboardController.getLeaderboard);
-
+router.get("/my-rank", authenticate, LeaderboardController.getMyRank);
 module.exports = router;

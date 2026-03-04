@@ -55,6 +55,7 @@ class UserRepository {
     const query = `
         SELECT id, username, total_points, current_level, created_at
         FROM users
+        WHERE role = 'user'
         ORDER BY total_points DESC
         LIMIT $1
     `;
@@ -68,12 +69,69 @@ class UserRepository {
         SELECT rank FROM (
             SELECT id, RANK() OVER (ORDER BY total_points DESC) as rank
             FROM users
+            WHERE role = 'user'
         ) subquery
         WHERE id = $1
     `;
     const { rows } = await db.query(query, [userId]);
     // Trả về số hạng (kiểu int) hoặc null nếu không tìm thấy
     return rows.length > 0 ? parseInt(rows[0].rank, 10) : null;
+  }
+
+  static async getAllUsers() {
+    // Không lấy mật khẩu (password) để đảm bảo bảo mật
+    const query = `
+            SELECT id, username, email, role, current_level, total_points, created_at 
+            FROM users 
+            ORDER BY created_at DESC
+        `;
+    const { rows } = await db.query(query);
+    return rows;
+  }
+
+  // 2. Cập nhật thông tin người dùng (Role, Level, Points)
+  static async updateUserByAdmin(id, role, currentLevel, totalPoints) {
+    const query = `
+            UPDATE users 
+            SET role = $1, current_level = $2, total_points = $3, updated_at = NOW()
+            WHERE id = $4 
+            RETURNING id, username, email, role, current_level, total_points
+        `;
+    const { rows } = await db.query(query, [
+      role,
+      currentLevel,
+      totalPoints,
+      id,
+    ]);
+    return rows[0];
+  }
+
+  // 3. Xóa người dùng
+  static async deleteUser(id) {
+    // Trong hệ thống thực tế, bạn nên dùng Soft Delete (đánh dấu is_deleted = true)
+    // Nhưng ở đây ta dùng Hard Delete theo đúng luồng hiện tại
+    const query = `DELETE FROM users WHERE id = $1 RETURNING id`;
+    const { rows } = await db.query(query, [id]);
+    return rows[0];
+  }
+  static async getUserPoints(userId) {
+    const query = `SELECT total_points FROM users WHERE id = $1`;
+    const { rows } = await db.query(query, [userId]);
+    return rows[0] ? rows[0].total_points : 0;
+  }
+
+  // Thêm hàm cập nhật điểm và level sau khi làm bài
+  static async addPointsAndLevel(userId, pointsToAdd, newLevel) {
+    const query = `
+            UPDATE users 
+            SET total_points = total_points + $1,
+                current_level = $2,
+                updated_at = NOW()
+            WHERE id = $3
+            RETURNING id, total_points, current_level
+        `;
+    const { rows } = await db.query(query, [pointsToAdd, newLevel, userId]);
+    return rows[0];
   }
 }
 

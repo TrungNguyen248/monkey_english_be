@@ -17,11 +17,7 @@ class CourseService {
 
   // Lấy danh sách khóa học dựa theo Role
   static async getCourses(userRole) {
-    if (userRole === "admin") {
-      return await CourseRepository.getAllCourses();
-    } else {
-      return await CourseRepository.getPublishedCourses();
-    }
+    return await CourseRepository.getPublishedCourses();
   }
 
   // Lấy chi tiết khóa học
@@ -39,7 +35,7 @@ class CourseService {
 
   // Cập nhật khóa học
   static async updateCourse(id, data) {
-    const { title, description, status } = data;
+    const { title, description, status, tags } = data;
 
     // Kiểm tra xem khóa học có tồn tại không
     const existingCourse = await CourseRepository.getCourseById(id);
@@ -51,6 +47,7 @@ class CourseService {
       title || existingCourse.title,
       description || existingCourse.description,
       status || existingCourse.status,
+      tags || existingCourse.tags,
     );
   }
 

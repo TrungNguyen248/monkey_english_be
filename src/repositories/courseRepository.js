@@ -2,12 +2,9 @@ const db = require("../configs/db");
 
 class CourseRepository {
   // Thêm khóa học mới
-  static async createCourse(title, description, status) {
-    const query = `
-            INSERT INTO courses (title, description, status) 
-            VALUES ($1, $2, $3) RETURNING *
-        `;
-    const { rows } = await db.query(query, [title, description, status]);
+  static async createCourse(title, description, status, tags = []) {
+    const query = `INSERT INTO courses (title, description, status, tags) VALUES ($1, $2, $3, $4) RETURNING *`;
+    const { rows } = await db.query(query, [title, description, status, tags]);
     return rows[0];
   }
 
@@ -18,10 +15,36 @@ class CourseRepository {
     return rows;
   }
 
-  // Lấy các khóa học đã xuất bản (Dành cho User)
-  static async getPublishedCourses() {
-    const query = `SELECT * FROM courses WHERE status = 'published' ORDER BY created_at DESC`;
+  static async getAllCoursesForAdmin() {
+    const query = `SELECT * FROM courses ORDER BY created_at DESC`;
     const { rows } = await db.query(query);
+    return rows;
+  }
+
+  // Lấy các khóa học đã xuất bản (Dành cho User)
+  static async getPublishedCourses(search = "", tag = "") {
+    let query = `SELECT * FROM courses WHERE status = 'published'`;
+    const params = [];
+    let paramIndex = 1;
+
+    if (search) {
+      query += ` AND title ILIKE $${paramIndex}`;
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    if (tag) {
+      // Sử dụng hàm EXISTS kết hợp UNNEST và LOWER để so sánh mảng không phân biệt hoa thường
+      query += ` AND EXISTS (
+                SELECT 1 FROM unnest(tags) t 
+                WHERE LOWER(t) = LOWER($${paramIndex})
+            )`;
+      params.push(tag);
+      paramIndex++;
+    }
+
+    query += ` ORDER BY created_at DESC`;
+    const { rows } = await db.query(query, params);
     return rows;
   }
 
@@ -33,13 +56,15 @@ class CourseRepository {
   }
 
   // Cập nhật khóa học
-  static async updateCourse(id, title, description, status) {
-    const query = `
-            UPDATE courses 
-            SET title = $1, description = $2, status = $3 
-            WHERE id = $4 RETURNING *
-        `;
-    const { rows } = await db.query(query, [title, description, status, id]);
+  static async updateCourse(id, title, description, status, tags = []) {
+    const query = `UPDATE courses SET title = $1, description = $2, status = $3, tags = $4 WHERE id = $5 RETURNING *`;
+    const { rows } = await db.query(query, [
+      title,
+      description,
+      status,
+      tags,
+      id,
+    ]);
     return rows[0];
   }
 
